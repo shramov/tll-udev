@@ -1,0 +1,15 @@
+- name: Property
+  fields:
+    - {name: name, type: string}
+    - {name: value, type: string}
+
+- name: Device
+  id: 10
+  enums:
+    Action: {type: int8, enum: { Unknown: 0, Add: 1, Bind: 2, Change: 3, Unbind: 4, Remove: 5 }}
+  fields:
+    - {name: action, type: Action}
+    - {name: subsystem, type: string}
+    - {name: sysname, type: string}
+    - {name: devpath, type: string}
+    - {name: properties, type: '*Property'}
