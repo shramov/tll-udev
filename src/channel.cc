@@ -18,12 +18,15 @@ using namespace tll;
 class UDev : public tll::channel::Base<UDev>
 {
 	udev * _udev = nullptr;
+	udev_enumerate * _udev_enum = nullptr;
+	udev_list_entry * _enum_list = nullptr;
 	udev_monitor * _monitor = nullptr;
 
 	std::string _subsystem;
 	std::string _devtype;
 
 	std::vector<char> _buf;
+	bool _enumerate = true;
 
  public:
 	static constexpr std::string_view channel_protocol() { return "udev"; }
@@ -35,6 +38,9 @@ class UDev : public tll::channel::Base<UDev>
 	void _destroy();
 
 	int _process(long timeout, int flags);
+	int _process_enum();
+	int _process_monitor();
+	int _process_device(udev_device *dev);
 
  private:
 };
@@ -50,6 +56,7 @@ int UDev::_init(const Channel::Url &url, Channel * master)
 	auto reader = channel_props_reader(url);
 	_subsystem = reader.getT("subsystem", std::string());
 	_devtype = reader.getT("devtype", std::string());
+	_enumerate = reader.getT("enumerate", true);
 	if (!reader)
 		return _log.fail(EINVAL, "Invalid url: {}", reader.error());
 
@@ -80,12 +87,35 @@ int UDev::_open(const tll::ConstConfig &s)
 		_update_dcaps(dcaps::CPOLLIN);
 	}
 
+	if (_enumerate) {
+		_udev_enum = udev_enumerate_new(_udev);
+		if (!_udev_enum)
+			return _log.fail(EINVAL, "Failed to create udev enumerator");
+
+		if (_subsystem.size())
+			udev_enumerate_add_match_subsystem(_udev_enum, _subsystem.c_str());
+
+		if (udev_enumerate_scan_devices(_udev_enum) < 0)
+			return _log.fail(EINVAL, "Failed to enumerate subsystems");
+
+		_enum_list = udev_enumerate_get_list_entry(_udev_enum);
+		if (!_enum_list) {
+			udev_enumerate_unref(_udev_enum);
+			_udev_enum = nullptr;
+		} else
+			_dcaps_pending(true);
+	}
+
 	return 0;
 }
 
 int UDev::_close()
 {
 	_update_fd(-1);
+	_enum_list = nullptr;
+	if (_udev_enum)
+		udev_enumerate_unref(_udev_enum);
+	_udev_enum = nullptr;
 	if (_monitor)
 		udev_monitor_unref(_monitor);
 	_monitor = nullptr;
@@ -97,20 +127,52 @@ int UDev::_close()
 
 int UDev::_process(long timeout, int flags)
 {
+	if (_enum_list)
+		return _process_enum();
+	return _process_monitor();
+}
+
+int UDev::_process_enum()
+{
+	std::string_view path = udev_list_entry_get_name(_enum_list);
+	_log.info("Enumerate: {}", path);
+	auto dev = udev_device_new_from_syspath(_udev, path.data());
+	if (!dev)
+		return _log.fail(EINVAL, "Failed to get device {}", path);
+	_enum_list = udev_list_entry_get_next(_enum_list);
+	if (!_enum_list) {
+		_log.debug("Enumeration finished (last entry)");
+		udev_enumerate_unref(_udev_enum);
+		_udev_enum = nullptr;
+		_dcaps_pending(false);
+	}
+	_process_device(dev);
+	return 0;
+}
+
+int UDev::_process_monitor()
+{
 	auto dev = udev_monitor_receive_device(_monitor);
 	if (!dev)
 		return _log.fail(EAGAIN, "Failed to get udev device");
+	return _process_device(dev);
+}
 
+int UDev::_process_device(udev_device * dev)
+{
 	_buf.resize(0);
 	auto data = tll::scheme::make_binder<udev_scheme::Device>(_buf);
 	_buf.resize(data.meta_size());
-	std::string_view action = udev_device_get_action(dev);
-	if (action == "add") data.set_action(data.Action::Add);
-	else if (action == "bind") data.set_action(data.Action::Bind);
-	else if (action == "change") data.set_action(data.Action::Change);
-	else if (action == "unbind") data.set_action(data.Action::Unbind);
-	else if (action == "remove") data.set_action(data.Action::Remove);
-	else
+	if (auto caction = udev_device_get_action(dev); caction) {
+		std::string_view action = caction;
+		if (action == "add") data.set_action(data.Action::Add);
+		else if (action == "bind") data.set_action(data.Action::Bind);
+		else if (action == "change") data.set_action(data.Action::Change);
+		else if (action == "unbind") data.set_action(data.Action::Unbind);
+		else if (action == "remove") data.set_action(data.Action::Remove);
+		else
+			data.set_action(data.Action::Unknown);
+	} else
 		data.set_action(data.Action::Unknown);
 	data.set_subsystem(udev_device_get_subsystem(dev));
 	data.set_sysname(udev_device_get_sysname(dev));
