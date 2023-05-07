@@ -1,0 +1,20 @@
+BasedOnStyle: LLVM
+IndentWidth: 8
+UseTab: Always
+BreakBeforeBraces: Linux
+AllowShortIfStatementsOnASingleLine: false
+AllowShortCaseLabelsOnASingleLine: false
+IndentCaseLabels: false
+SpaceAfterCStyleCast: true
+AlwaysBreakTemplateDeclarations: Yes
+ColumnLimit: 160
+AccessModifierOffset: -7
+BreakBeforeBraces: Custom
+BraceWrapping:
+  AfterFunction: true
+  AfterNamespace: false
+  AfterClass: true
+  AfterStruct: true
+  AfterUnion: true
+  AfterEnum: true
+#IndentAccessModifiers: false
