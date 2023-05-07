@@ -160,20 +160,21 @@ int UDev::_process_monitor()
 
 int UDev::_process_device(udev_device * dev)
 {
+	using Action = udev_scheme::Device::Action;
 	_buf.resize(0);
-	auto data = tll::scheme::make_binder<udev_scheme::Device>(_buf);
+	auto data = udev_scheme::Device::bind(_buf);
 	_buf.resize(data.meta_size());
 	if (auto caction = udev_device_get_action(dev); caction) {
 		std::string_view action = caction;
-		if (action == "add") data.set_action(data.Action::Add);
-		else if (action == "bind") data.set_action(data.Action::Bind);
-		else if (action == "change") data.set_action(data.Action::Change);
-		else if (action == "unbind") data.set_action(data.Action::Unbind);
-		else if (action == "remove") data.set_action(data.Action::Remove);
+		if (action == "add") data.set_action(Action::Add);
+		else if (action == "bind") data.set_action(Action::Bind);
+		else if (action == "change") data.set_action(Action::Change);
+		else if (action == "unbind") data.set_action(Action::Unbind);
+		else if (action == "remove") data.set_action(Action::Remove);
 		else
-			data.set_action(data.Action::Unknown);
+			data.set_action(Action::Unknown);
 	} else
-		data.set_action(data.Action::Unknown);
+		data.set_action(Action::Unknown);
 	data.set_subsystem(udev_device_get_subsystem(dev));
 	data.set_sysname(udev_device_get_sysname(dev));
 	data.set_devpath(udev_device_get_devpath(dev));
