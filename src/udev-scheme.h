@@ -5,8 +5,7 @@
 
 namespace udev_scheme {
 
-static constexpr std::string_view scheme_string =
-    R"(yamls+gz://eJyNkd0KgkAQhe99irlbCIV+IbyzeoAIeoC1nXJJR3FXQ8J3b1atIAq72nN2P+bszARAMsMQxL7MCyxtIzyAs8ZUmZAVQAD3gXCH8ME2hXPGlpouov2AaplW36jgmbPDWp/QpWgVwmzKAqnKhjQRnazOSYRw7ytosmu/I/hKRErx08wHsdHk5JzlNpF0QTYLNgfM8tqZFZsjxT227MyV8psrPW3bn03KPv/VwPCfzzZNFZvGWMxGB8LYX4NTWBfSJqNc0e9Jo3mjk9fyWu8BOvWK7w==)";
+static constexpr std::string_view scheme_string = R"(yamls+gz://eJyNkd0KgkAQhe99irlbCIV+IbyzeoAIeoC1nXJJR3FXQ8J3b1atIAq72nN2P+bszARAMsMQxL7MCyxtIzyAs8ZUmZAVQAD3gXCH8ME2hXPGlpouov2AaplW36jgmbPDWp/QpWgVwmzKAqnKhjQRnazOSYRw7ytosmu/I/hKRErx08wHsdHk5JzlNpF0QTYLNgfM8tqZFZsjxT227MyV8psrPW3bn03KPv/VwPCfzzZNFZvGWMxGB8LYX4NTWBfSJqNc0e9Jo3mjk9fyWu8BOvWK7w==)";
 
 struct Property
 {
@@ -30,10 +29,10 @@ struct Property
 	};
 
 	template <typename Buf>
-	static binder_type<Buf> bind(Buf &buf, size_t offset = 0)
-	{
-		return binder_type<Buf>(tll::make_view(buf).view(offset));
-	}
+	static binder_type<Buf> bind(Buf &buf, size_t offset = 0) { return binder_type<Buf>(tll::make_view(buf).view(offset)); }
+
+	template <typename Buf>
+	static binder_type<Buf> bind_reset(Buf &buf) { return tll::scheme::make_binder_reset<binder_type, Buf>(buf); }
 };
 
 struct Device
@@ -42,7 +41,7 @@ struct Device
 	static constexpr std::string_view meta_name() { return "Device"; }
 	static constexpr int meta_id() { return 10; }
 
-	enum class Action : int8_t
+	enum class Action: int8_t
 	{
 		Unknown = 0,
 		Add = 1,
@@ -81,10 +80,10 @@ struct Device
 	};
 
 	template <typename Buf>
-	static binder_type<Buf> bind(Buf &buf, size_t offset = 0)
-	{
-		return binder_type<Buf>(tll::make_view(buf).view(offset));
-	}
+	static binder_type<Buf> bind(Buf &buf, size_t offset = 0) { return binder_type<Buf>(tll::make_view(buf).view(offset)); }
+
+	template <typename Buf>
+	static binder_type<Buf> bind_reset(Buf &buf) { return tll::scheme::make_binder_reset<binder_type, Buf>(buf); }
 };
 
 } // namespace udev_scheme
@@ -96,20 +95,13 @@ struct tll::conv::dump<udev_scheme::Device::Action> : public to_string_from_stri
 	static inline std::string_view to_string_buf(const udev_scheme::Device::Action &v, Buf &buf)
 	{
 		switch (v) {
-		case udev_scheme::Device::Action::Add:
-			return "Add";
-		case udev_scheme::Device::Action::Bind:
-			return "Bind";
-		case udev_scheme::Device::Action::Change:
-			return "Change";
-		case udev_scheme::Device::Action::Remove:
-			return "Remove";
-		case udev_scheme::Device::Action::Unbind:
-			return "Unbind";
-		case udev_scheme::Device::Action::Unknown:
-			return "Unknown";
-		default:
-			break;
+		case udev_scheme::Device::Action::Add: return "Add";
+		case udev_scheme::Device::Action::Bind: return "Bind";
+		case udev_scheme::Device::Action::Change: return "Change";
+		case udev_scheme::Device::Action::Remove: return "Remove";
+		case udev_scheme::Device::Action::Unbind: return "Unbind";
+		case udev_scheme::Device::Action::Unknown: return "Unknown";
+		default: break;
 		}
 		return tll::conv::to_string_buf<int8_t, Buf>((int8_t) v, buf);
 	}
