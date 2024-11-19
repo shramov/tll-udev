@@ -161,9 +161,7 @@ int UDev::_process_monitor()
 int UDev::_process_device(udev_device * dev)
 {
 	using Action = udev_scheme::Device::Action;
-	_buf.resize(0);
-	auto data = udev_scheme::Device::bind(_buf);
-	_buf.resize(data.meta_size());
+	auto data = udev_scheme::Device::bind_reset(_buf);
 	if (auto caction = udev_device_get_action(dev); caction) {
 		std::string_view action = caction;
 		if (action == "add") data.set_action(Action::Add);
@@ -178,8 +176,6 @@ int UDev::_process_device(udev_device * dev)
 	data.set_subsystem(udev_device_get_subsystem(dev));
 	data.set_sysname(udev_device_get_sysname(dev));
 	data.set_devpath(udev_device_get_devpath(dev));
-
-	_log.info("{}: {}", udev_device_get_action(dev), udev_device_get_sysname(dev));
 
 	size_t idx = 0;
 	auto list = udev_device_get_properties_list_entry(dev);
