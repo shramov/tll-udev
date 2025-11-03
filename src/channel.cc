@@ -153,8 +153,11 @@ int UDev::_process_enum()
 int UDev::_process_monitor()
 {
 	auto dev = udev_monitor_receive_device(_monitor);
-	if (!dev)
+	if (!dev) {
+		if (errno == EAGAIN)
+			return EAGAIN;
 		return _log.fail(EAGAIN, "Failed to get udev device");
+	}
 	return _process_device(dev);
 }
 
