@@ -1,3 +1,4 @@
+- options.cpp-namespace: udev_scheme
 - name: Property
   fields:
     - {name: name, type: string}
